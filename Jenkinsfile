@@ -1,9 +1,6 @@
 pipeline {
-    agent any
-    environment {
-        // Replace 'MySonarQube' with the name of your SonarQube server in Jenkins
-        SONARQUBE_ENV = 'MySonarQube'
-    }
+    agent { label 'ansible' } // Specify the agent named 'ansible'
+    
     stages {
         stage('Clone Repository') {
             steps {
@@ -13,22 +10,25 @@ pipeline {
         stage('Build') {
             steps {
                 echo 'Building the project...'
-                // Add your build steps (e.g., Maven or Gradle)
-                sh 'mvn clean install'
+                sh 'mvn clean install' // Runs Maven on the agent
             }
         }
         stage('SonarQube Analysis') {
             steps {
-                withSonarQubeEnv("${SONARQUBE_ENV}") {
-                    echo 'Running SonarQube Analysis...'
+                withSonarQubeEnv('MySonarQube') { // Replace 'MySonarQube' with your SonarQube server name in Jenkins
+                    echo 'Running SonarQube analysis...'
                     sh 'mvn sonar:sonar'
                 }
             }
         }
     }
+    
     post {
+        always {
+            echo 'Pipeline finished.'
+        }
         success {
-            echo 'Pipeline completed successfully!'
+            echo 'Pipeline succeeded!'
         }
         failure {
             echo 'Pipeline failed.'
