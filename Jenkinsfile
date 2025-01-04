@@ -1,8 +1,10 @@
 pipeline {
     agent any
+
     stages {
-        stage('Clone Repository') {
+        stage('Checkout') {
             steps {
+                echo 'Cloning the Git repository...'
                 git branch: 'main', url: 'https://github.com/jefrya123/AZ_DevSecOps'
             }
         }
@@ -10,30 +12,44 @@ pipeline {
         stage('Build') {
             steps {
                 echo 'Building the project...'
+                // Assuming a Maven project
                 sh 'mvn clean install'
             }
         }
 
         stage('SonarQube Analysis') {
             environment {
-                SONAR_TOKEN = credentials('cred') // Replace with your SonarQube token credentials ID
+                // Replace 'cred' with your actual SonarQube token credentials ID in Jenkins
+                SONAR_TOKEN = credentials('cred')
             }
             steps {
-                withSonarQubeEnv('MySonarQube') { // Replace 'MySonarQube' with your SonarQube configuration name
-                    sh '''
-                    mvn sonar:sonar \
-                        -Dsonar.login=$SONAR_TOKEN
-                    '''
+                echo 'Performing SonarQube analysis...'
+                // Replace 'MySonarQube' with the name of your SonarQube server configured in Jenkins
+                withSonarQubeEnv('MySonarQube') {
+                    // Run the SonarQube analysis using Maven
+                    sh 'mvn sonar:sonar -Dsonar.projectKey=AZ_DevSecOps -Dsonar.host.url=http://<sonarqube-url> -Dsonar.login=$SONAR_TOKEN'
+                }
+            }
+        }
+
+        stage('Quality Gate') {
+            steps {
+                echo 'Checking the Quality Gate...'
+                // Use the 'waitForQualityGate' step to pause the pipeline until the analysis is complete
+                script {
+                    def qg = waitForQualityGate()
+                    if (qg.status != 'OK') {
+                        error "Pipeline aborted due to quality gate failure: ${qg.status}"
+                    }
                 }
             }
         }
     }
+
     post {
         always {
-            echo 'Pipeline finished.'
-        }
-        failure {
-            echo 'Pipeline failed.'
+            echo 'Cleaning up workspace...'
+            cleanWs()
         }
     }
 }
