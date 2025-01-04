@@ -1,34 +1,33 @@
 pipeline {
-    agent { label 'ansible' } // Specify the agent named 'ansible'
-    
+    agent any
     stages {
         stage('Clone Repository') {
             steps {
-                checkout scm
+                git 'https://github.com/jefrya123/AZ_DevSecOps'
             }
         }
         stage('Build') {
             steps {
-                echo 'Building the project...'
-                sh 'mvn clean install' // Runs Maven on the agent
+                sh 'mvn clean install'
             }
         }
         stage('SonarQube Analysis') {
+            environment {
+                SONAR_TOKEN = credentials('sonar-token') // Replace 'sonar-token' with your Jenkins credential ID
+            }
             steps {
-                withSonarQubeEnv('MySonarQube') { // Replace 'MySonarQube' with your SonarQube server name in Jenkins
-                    echo 'Running SonarQube analysis...'
-                    sh 'mvn sonar:sonar'
+                withSonarQubeEnv('MySonarQube') {
+                    sh '''
+                    mvn sonar:sonar \
+                        -Dsonar.login=$SONAR_TOKEN
+                    '''
                 }
             }
         }
     }
-    
     post {
         always {
             echo 'Pipeline finished.'
-        }
-        success {
-            echo 'Pipeline succeeded!'
         }
         failure {
             echo 'Pipeline failed.'
