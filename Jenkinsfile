@@ -1,36 +1,47 @@
 pipeline {
-    agent {
-        label 'ansible' // Replace with the label of your agent
+    agent { label 'ansible' }  // 'ansible' is your Jenkins agent label
+
+    environment {
+        SONARQUBE_URL = 'http://192.168.1.184:9000/'  // Your SonarQube server URL
+        SONARQUBE_TOKEN = credentials('cred') // The credentials ID for SonarQube token
     }
+
     stages {
-        stage('Clone Repository') {
+        stage('Checkout SCM') {
             steps {
-                git branch: 'main', url: 'https://github.com/jefrya123/AZ_DevSecOps'
+                checkout scm
             }
         }
+
         stage('Build') {
             steps {
                 echo 'Building the project...'
                 sh 'mvn clean install'
             }
         }
+
         stage('SonarQube Analysis') {
-            environment {
-                SONAR_TOKEN = credentials('sonar-token') // Replace with your SonarQube token credentials ID
-            }
             steps {
-                withSonarQubeEnv('MySonarQube') { // Replace 'MySonarQube' with your SonarQube configuration name
-                    sh '''
-                    mvn sonar:sonar \
-                        -Dsonar.login=$SONAR_TOKEN
-                    '''
+                echo 'Running SonarQube analysis...'
+                withSonarQubeEnv('MySonarQube') {  // Using the SonarQube server configuration in Jenkins
+                    sh 'mvn sonar:sonar'
+                }
+            }
+        }
+
+        stage('Quality Gate') {
+            steps {
+                echo 'Waiting for SonarQube analysis result...'
+                timeout(time: 1, unit: 'HOURS') {
+                    waitForQualityGate()  // Wait for the SonarQube Quality Gate to pass/fail
                 }
             }
         }
     }
+
     post {
-        always {
-            echo 'Pipeline finished.'
+        success {
+            echo 'Pipeline completed successfully.'
         }
         failure {
             echo 'Pipeline failed.'
