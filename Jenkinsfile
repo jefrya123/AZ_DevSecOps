@@ -3,7 +3,7 @@ pipeline {
     stages {
         stage('Clone Repository') {
             steps {
-                git 'https://github.com/jefrya123/AZ_DevSecOps'
+                git branch: 'main', url: 'https://github.com/jefrya123/AZ_DevSecOps'
             }
         }
 
